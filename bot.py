@@ -4,7 +4,7 @@ import json
 import datetime
 from telebot import types
 
-bot = telebot.TeleBot("YOUR_TOKEN_HERE")
+bot = telebot.TeleBot("8968911517:AAE736Z9Go3JwrhfpQFt8g8Iy-iC8BMfVZA")
 
 with open("words.json", "r", encoding="utf-8") as f:
     words = json.load(f)
