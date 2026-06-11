@@ -1,20 +1,96 @@
-import asyncio
+import telebot
 import random
-import json with open("words.json", "r", encoding="utf-8") as f:
+import json
+from telebot import types
+
+bot = telebot.TeleBot("8968911517:AAE736Z9Go3JwrhfpQFt8g8Iy-iC8BMfVZA")
+
+# 1. загрузка слов
+with open("words.json", "r", encoding="utf-8") as f:
     words = json.load(f)
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackContext,
-)
 
-import os
+# 2. данные пользователей (тесты)
+user_data = {}
 
-TOKEN = os.getenv("TOKEN")
+@bot.message_handler(commands=['test'])
+def start_test(message):
+    chat_id = message.chat.id
 
+    user_data[chat_id] = {
+        "score": 0,
+        "q_left": 5,
+        "current_correct": None
+    }
 
+    send_question(chat_id)
 
+def send_question(chat_id):
+
+    # если тест закончился
+    if user_data[chat_id]["q_left"] <= 0:
+        score = user_data[chat_id]["score"]
+
+        bot.send_message(
+            chat_id,
+            f"🏁 Тест завершён!\n\n"
+            f"✅ Результат: {score}/5"
+        )
+
+        del user_data[chat_id]
+        return
+
+    # слово
+    word = random.choice(list(words.keys()))
+    correct = words[word]
+
+    user_data[chat_id]["current_correct"] = correct
+
+    # неправильные варианты
+    wrong_answers = list(words.values())
+    wrong_answers.remove(correct)
+    wrong_choices = random.sample(wrong_answers, 3)
+
+    options = wrong_choices + [correct]
+    random.shuffle(options)
+
+    markup = types.InlineKeyboardMarkup()
+
+    labels = ["A", "B", "C", "D"]
+
+    for i in range(4):
+        markup.add(
+            types.InlineKeyboardButton(
+                text=f"{labels[i]}) {options[i]}",
+                callback_data=f"answer:{options[i]}"
+            )
+        )
+
+    bot.send_message(
+        chat_id,
+        f"❓ Переведи слово: *{word}*",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
+@bot.callback_query_handler(func=lambda call: call.data.startswith("answer:"))
+def check_answer(call):
+
+    chat_id = call.message.chat.id
+    selected = call.data.split("answer:")[1]
+
+    correct = user_data[chat_id]["current_correct"]
+
+    if selected == correct:
+        user_data[chat_id]["score"] += 1
+        bot.answer_callback_query(call.id, "✅ Правильно!")
+        bot.send_message(chat_id, "👍 Верно!")
+    else:
+        bot.answer_callback_query(call.id, "❌ Неправильно")
+        bot.send_message(chat_id, f"❌ Неверно!\nПравильный ответ: {correct}")
+
+    user_data[chat_id]["q_left"] -= 1
+
+    send_question(chat_id)
+    
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(
         "Привет! 👋\n"
@@ -90,3 +166,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    
+bot.infinity_polling()
