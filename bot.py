@@ -10,7 +10,8 @@ from threading import Thread
 # =====================
 # TELEGRAM BOT
 # =====================
-bot = telebot.TeleBot(os.getenv("8968911517:AAE736Z9Go3JwrhfpQFt8g8Iy-iC8BMfVZA"))
+TOKEN = os.getenv("BOT_TOKEN")
+bot = telebot.TeleBot(TOKEN)
 
 with open("words.json", "r", encoding="utf-8") as f:
     words = json.load(f)
