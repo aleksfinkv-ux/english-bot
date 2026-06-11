@@ -2,9 +2,15 @@ import telebot
 import random
 import json
 import datetime
+import os
 from telebot import types
+from flask import Flask
+from threading import Thread
 
-bot = telebot.TeleBot("8968911517:AAE736Z9Go3JwrhfpQFt8g8Iy-iC8BMfVZA")
+# =====================
+# TELEGRAM BOT
+# =====================
+bot = telebot.TeleBot(os.getenv("BOT_TOKEN"))
 
 with open("words.json", "r", encoding="utf-8") as f:
     words = json.load(f)
@@ -12,15 +18,29 @@ with open("words.json", "r", encoding="utf-8") as f:
 user_data = {}
 
 
-# =========================
-# XP + STREAK LOGIC
-# =========================
+# =====================
+# FLASK (ДЛЯ RENDER ПОРТА)
+# =====================
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+
+def run_web():
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
+
+# =====================
+# XP + STREAK
+# =====================
 def today():
     return datetime.date.today()
 
+
 def update_streak(user):
     now = today()
-
     last = user.get("last_day")
 
     if last is None:
@@ -46,9 +66,9 @@ def get_level(score):
         return "B1"
 
 
-# =========================
-# START TEST
-# =========================
+# =====================
+# TEST START
+# =====================
 @bot.message_handler(commands=['test'])
 def start_test(message):
     chat_id = message.chat.id
@@ -66,9 +86,9 @@ def start_test(message):
     send_question(chat_id)
 
 
-# =========================
+# =====================
 # QUESTION
-# =========================
+# =====================
 def send_question(chat_id):
 
     if chat_id not in user_data:
@@ -80,33 +100,20 @@ def send_question(chat_id):
         level = get_level(score)
 
         update_streak(user_data[chat_id])
-
         streak = user_data[chat_id]["streak"]
 
         bot.send_message(
             chat_id,
             f"🏁 Тест завершён!\n\n"
-            f"✅ Правильных: {score}/5\n"
             f"⭐ XP: {xp}\n"
-            f"📊 Уровень: {level}\n"
-            f"🔥 Streak: {streak} дней подряд"
+            f"📊 Level: {level}\n"
+            f"🔥 Streak: {streak}"
         )
 
         del user_data[chat_id]
         return
 
-    level = user_data[chat_id]["level"]
-
-    keys = list(words.keys())
-
-    if level == "A1":
-        pool = keys[:80]
-    elif level == "A2":
-        pool = keys[:150]
-    else:
-        pool = keys
-
-    word = random.choice(pool)
+    word = random.choice(list(words.keys()))
     correct = words[word]
 
     user_data[chat_id]["current_correct"] = correct
@@ -130,22 +137,22 @@ def send_question(chat_id):
 
     bot.send_message(
         chat_id,
-        f"❓ Переведи слово ({level}): *{word}*",
+        f"❓ Word: *{word}*",
         reply_markup=markup,
         parse_mode="Markdown"
     )
 
 
-# =========================
-# ANSWER CHECK
-# =========================
+# =====================
+# ANSWERS
+# =====================
 @bot.callback_query_handler(func=lambda call: call.data.startswith("ans:"))
 def check_answer(call):
 
     chat_id = call.message.chat.id
 
     if chat_id not in user_data:
-        bot.answer_callback_query(call.id, "Начни тест через /test")
+        bot.answer_callback_query(call.id, "Start /test")
         return
 
     selected = call.data.split("ans:")[1]
@@ -154,20 +161,18 @@ def check_answer(call):
     if selected == correct:
         user_data[chat_id]["score"] += 1
         user_data[chat_id]["xp"] += 10
-
         bot.answer_callback_query(call.id, "✅ +10 XP")
-        bot.send_message(chat_id, "👍 Верно!")
     else:
-        bot.answer_callback_query(call.id, "❌ Ошибка")
-        bot.send_message(chat_id, f"❌ Неверно!\nОтвет: {correct}")
+        bot.answer_callback_query(call.id, "❌ Wrong")
 
     user_data[chat_id]["q_left"] -= 1
-
     send_question(chat_id)
 
 
-# =========================
-# START
-# =========================
-print("Bot started...")
-bot.infinity_polling()
+# =====================
+# START EVERYTHING
+# =====================
+if __name__ == "__main__":
+    Thread(target=run_web).start()
+    print("Bot started")
+    bot.infinity_polling()
