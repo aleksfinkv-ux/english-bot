@@ -6,9 +6,7 @@ from telegram.ext import (
     CallbackContext,
 )
 
-import os
-
-TOKEN = os.getenv("TOKEN")
+TOKEN = "8968911517:AAE736Z9Go3JwrhfpQFt8g8Iy-iC8BMfVZA"
 
 words = [
     ("apple", "яблоко"),
