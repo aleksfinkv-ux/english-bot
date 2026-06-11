@@ -1,5 +1,7 @@
 import asyncio
 import random
+import json with open("words.json", "r", encoding="utf-8") as f:
+    words = json.load(f)
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -11,18 +13,7 @@ import os
 
 TOKEN = os.getenv("TOKEN")
 
-words = [
-    ("apple", "яблоко"),
-    ("house", "дом"),
-    ("book", "книга"),
-    ("water", "вода"),
-    ("friend", "друг"),
-    ("computer", "компьютер"),
-    ("school", "школа"),
-    ("money", "деньги"),
-    ("family", "семья"),
-    ("language", "язык"),
-]
+
 
 async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(
